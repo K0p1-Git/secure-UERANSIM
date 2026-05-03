@@ -10,6 +10,7 @@
 #include "utils.hpp"
 
 #include <algorithm>
+#include <cstring>
 
 #include <gnb/app/task.hpp>
 #include <gnb/rrc/task.hpp>
@@ -33,6 +34,8 @@
 
 namespace nr::gnb
 {
+
+static constexpr const char *kAmfEchoProbeRequest = "UERANSIM_AMF_ECHO_PROBE";
 
 template <typename T>
 static void AssignDefaultAmfConfigs(NgapAmfContext *amf, T *msg)
@@ -80,11 +83,22 @@ void NgapTask::handleAssociationSetup(int amfId, int ascId, int inCount, int out
     auto *amf = findAmfContext(amfId);
     if (amf != nullptr)
     {
-        amf->association.associationId = amfId;
+        amf->association.associationId = ascId;
         amf->association.inStreams = inCount;
         amf->association.outStreams = outCount;
 
-        sendNgSetupRequest(amf->ctxId);
+        auto msg = std::make_unique<NmGnbSctp>(NmGnbSctp::SEND_MESSAGE);
+        msg->clientId = amf->ctxId;
+        msg->stream = 0;
+        auto probeLength = std::strlen(kAmfEchoProbeRequest);
+        auto *probePayload = new uint8_t[probeLength];
+        std::memcpy(probePayload, kAmfEchoProbeRequest, probeLength);
+        msg->buffer = UniqueBuffer{probePayload, probeLength};
+        m_base->sctpTask->push(std::move(msg));
+
+        m_pendingAmfEchoVerification.insert(amf->ctxId);
+        m_verifiedAmfEcho.erase(amf->ctxId);
+        m_logger->debug("AMF[%d] echo verification probe sent. Waiting for echo response before NG setup.", amf->ctxId);
     }
 }
 
@@ -98,6 +112,8 @@ void NgapTask::handleAssociationShutdown(int amfId)
     m_logger->debug("Removing AMF context[%d]", amfId);
 
     amf->state = EAmfState::NOT_CONNECTED;
+    m_pendingAmfEchoVerification.erase(amfId);
+    m_verifiedAmfEcho.erase(amfId);
 
     auto w = std::make_unique<NmGnbSctp>(NmGnbSctp::CONNECTION_CLOSE);
     w->clientId = amfId;
@@ -108,11 +124,17 @@ void NgapTask::handleAssociationShutdown(int amfId)
 
 void NgapTask::sendNgSetupRequest(int amfId)
 {
-    m_logger->debug("Sending NG Setup Request");
-
     auto *amf = findAmfContext(amfId);
     if (amf == nullptr)
         return;
+
+    if (!m_verifiedAmfEcho.count(amfId))
+    {
+        m_logger->warn("Skipping NG Setup Request for AMF[%d]: echo verification has not succeeded yet.", amfId);
+        return;
+    }
+
+    m_logger->debug("Sending NG Setup Request");
 
     amf->state = EAmfState::WAITING_NG_SETUP;
 
