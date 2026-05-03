@@ -235,6 +235,7 @@ void NgapTask::handleSctpMessage(int amfId, uint16_t stream, const UniqueBuffer 
             std::memcmp(buffer.data(), kAmfEchoProbeRequest, buffer.size()) == 0)
         {
             m_pendingAmfEchoVerification.erase(amf->ctxId);
+            m_verifiedAmfEcho.insert(amf->ctxId);
             m_logger->info("AMF[%d] echo verification succeeded. Starting NG setup.", amf->ctxId);
             sendNgSetupRequest(amf->ctxId);
             return;

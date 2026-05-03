@@ -57,6 +57,7 @@ class NgapTask : public NtsTask
     uint32_t m_downlinkTeidCounter;
     bool m_isInitialized;
     std::unordered_set<int> m_pendingAmfEchoVerification;
+    std::unordered_set<int> m_verifiedAmfEcho;
 
     friend class GnbCmdHandler;
 

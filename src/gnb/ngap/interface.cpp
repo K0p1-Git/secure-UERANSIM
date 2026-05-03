@@ -97,6 +97,7 @@ void NgapTask::handleAssociationSetup(int amfId, int ascId, int inCount, int out
         m_base->sctpTask->push(std::move(msg));
 
         m_pendingAmfEchoVerification.insert(amf->ctxId);
+        m_verifiedAmfEcho.erase(amf->ctxId);
         m_logger->debug("AMF[%d] echo verification probe sent. Waiting for echo response before NG setup.", amf->ctxId);
     }
 }
@@ -112,6 +113,7 @@ void NgapTask::handleAssociationShutdown(int amfId)
 
     amf->state = EAmfState::NOT_CONNECTED;
     m_pendingAmfEchoVerification.erase(amfId);
+    m_verifiedAmfEcho.erase(amfId);
 
     auto w = std::make_unique<NmGnbSctp>(NmGnbSctp::CONNECTION_CLOSE);
     w->clientId = amfId;
@@ -122,11 +124,17 @@ void NgapTask::handleAssociationShutdown(int amfId)
 
 void NgapTask::sendNgSetupRequest(int amfId)
 {
-    m_logger->debug("Sending NG Setup Request");
-
     auto *amf = findAmfContext(amfId);
     if (amf == nullptr)
         return;
+
+    if (!m_verifiedAmfEcho.count(amfId))
+    {
+        m_logger->warn("Skipping NG Setup Request for AMF[%d]: echo verification has not succeeded yet.", amfId);
+        return;
+    }
+
+    m_logger->debug("Sending NG Setup Request");
 
     amf->state = EAmfState::WAITING_NG_SETUP;
 
