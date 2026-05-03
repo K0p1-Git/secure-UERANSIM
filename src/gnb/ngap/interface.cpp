@@ -90,8 +90,10 @@ void NgapTask::handleAssociationSetup(int amfId, int ascId, int inCount, int out
         auto msg = std::make_unique<NmGnbSctp>(NmGnbSctp::SEND_MESSAGE);
         msg->clientId = amf->ctxId;
         msg->stream = 0;
-        msg->buffer = UniqueBuffer{reinterpret_cast<const uint8_t *>(kAmfEchoProbeRequest),
-                                   std::strlen(kAmfEchoProbeRequest)};
+        auto probeLength = std::strlen(kAmfEchoProbeRequest);
+        auto *probePayload = new uint8_t[probeLength];
+        std::memcpy(probePayload, kAmfEchoProbeRequest, probeLength);
+        msg->buffer = UniqueBuffer{probePayload, probeLength};
         m_base->sctpTask->push(std::move(msg));
 
         m_pendingAmfEchoVerification.insert(amf->ctxId);
