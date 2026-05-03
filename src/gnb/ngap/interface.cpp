@@ -83,7 +83,7 @@ void NgapTask::handleAssociationSetup(int amfId, int ascId, int inCount, int out
     auto *amf = findAmfContext(amfId);
     if (amf != nullptr)
     {
-        amf->association.associationId = amfId;
+        amf->association.associationId = ascId;
         amf->association.inStreams = inCount;
         amf->association.outStreams = outCount;
 

@@ -240,7 +240,8 @@ void NgapTask::handleSctpMessage(int amfId, uint16_t stream, const UniqueBuffer 
             return;
         }
 
-        m_logger->warn("AMF[%d] did not echo probe payload; continuing with NGAP decode.", amf->ctxId);
+        m_logger->warn("AMF[%d] echo verification is pending; ignoring non-echo SCTP payload.", amf->ctxId);
+        return;
     }
 
     auto *pdu = ngap_encode::Decode<ASN_NGAP_NGAP_PDU>(asn_DEF_ASN_NGAP_NGAP_PDU, buffer.data(), buffer.size());
