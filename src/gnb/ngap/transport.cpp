@@ -231,6 +231,8 @@ void NgapTask::handleSctpMessage(int amfId, uint16_t stream, const UniqueBuffer 
 
     if (m_pendingAmfEchoVerification.count(amf->ctxId))
     {
+        m_logger->debug("AMF[%d] echo verification pending. Received SCTP payload size[%zu]", amf->ctxId, buffer.size());
+
         if (buffer.size() == std::strlen(kAmfEchoProbeRequest) &&
             std::memcmp(buffer.data(), kAmfEchoProbeRequest, buffer.size()) == 0)
         {

@@ -80,6 +80,8 @@ static void AssignDefaultAmfConfigs(NgapAmfContext *amf, T *msg)
 
 void NgapTask::handleAssociationSetup(int amfId, int ascId, int inCount, int outCount)
 {
+    m_logger->debug("handleAssociationSetup entered amfId[%d] ascId[%d] in[%d] out[%d]", amfId, ascId, inCount, outCount);
+
     auto *amf = findAmfContext(amfId);
     if (amf != nullptr)
     {
@@ -99,6 +101,10 @@ void NgapTask::handleAssociationSetup(int amfId, int ascId, int inCount, int out
         m_pendingAmfEchoVerification.insert(amf->ctxId);
         m_verifiedAmfEcho.erase(amf->ctxId);
         m_logger->debug("AMF[%d] echo verification probe sent. Waiting for echo response before NG setup.", amf->ctxId);
+    }
+    else
+    {
+        m_logger->warn("handleAssociationSetup could not find AMF context for amfId[%d]", amfId);
     }
 }
 
@@ -130,11 +136,11 @@ void NgapTask::sendNgSetupRequest(int amfId)
 
     if (!m_verifiedAmfEcho.count(amfId))
     {
-        m_logger->warn("Skipping NG Setup Request for AMF[%d]: echo verification has not succeeded yet.", amfId);
+        m_logger->warn("sendNgSetupRequest blocked for AMF[%d]: echo verification has not succeeded yet.", amfId);
         return;
     }
 
-    m_logger->debug("Sending NG Setup Request");
+    m_logger->debug("sendNgSetupRequest allowed for AMF[%d]. Sending NG Setup Request", amfId);
 
     amf->state = EAmfState::WAITING_NG_SETUP;
 
