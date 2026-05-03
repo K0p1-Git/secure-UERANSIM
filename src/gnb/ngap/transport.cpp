@@ -25,6 +25,9 @@
 #include <asn/ngap/ASN_NGAP_UnsuccessfulOutcome.h>
 #include <asn/ngap/ASN_NGAP_UserLocationInformation.h>
 #include <asn/ngap/ASN_NGAP_UserLocationInformationNR.h>
+#include <cstring>
+
+static constexpr const char *kAmfEchoProbeRequest = "UERANSIM_AMF_ECHO_PROBE";
 
 static e_ASN_NGAP_Criticality FindCriticalityOfUserIe(ASN_NGAP_NGAP_PDU *pdu, ASN_NGAP_ProtocolIE_ID_t ieId)
 {
@@ -225,6 +228,21 @@ void NgapTask::handleSctpMessage(int amfId, uint16_t stream, const UniqueBuffer 
     auto *amf = findAmfContext(amfId);
     if (amf == nullptr)
         return;
+
+    if (m_pendingAmfEchoVerification.count(amf->ctxId))
+    {
+        if (buffer.size() == std::strlen(kAmfEchoProbeRequest) &&
+            std::memcmp(buffer.data(), kAmfEchoProbeRequest, buffer.size()) == 0)
+        {
+            m_pendingAmfEchoVerification.erase(amf->ctxId);
+            m_logger->info("AMF[%d] echo verification succeeded. Starting NG setup.", amf->ctxId);
+            sendNgSetupRequest(amf->ctxId);
+            return;
+        }
+
+        m_logger->warn("AMF[%d] echo verification is pending; ignoring non-echo SCTP payload.", amf->ctxId);
+        return;
+    }
 
     auto *pdu = ngap_encode::Decode<ASN_NGAP_NGAP_PDU>(asn_DEF_ASN_NGAP_NGAP_PDU, buffer.data(), buffer.size());
     if (pdu == nullptr)
