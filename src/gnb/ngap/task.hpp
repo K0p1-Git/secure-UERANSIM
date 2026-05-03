@@ -10,6 +10,7 @@
 
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <gnb/nts.hpp>
 #include <gnb/types.hpp>
@@ -55,6 +56,7 @@ class NgapTask : public NtsTask
     int64_t m_ueNgapIdCounter;
     uint32_t m_downlinkTeidCounter;
     bool m_isInitialized;
+    std::unordered_set<int> m_pendingAmfEchoVerification;
 
     friend class GnbCmdHandler;
 
